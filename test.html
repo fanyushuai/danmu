@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <meta name="viewport"    content="width=device-width, initial-scale=1.0">
+	  <title>弹幕made by diligentyang</title>
+	  <style>
+	  </style>
+	</head>
+	<body>
+		<div id="reversal"></div>
+		<p><input type="button" id="tsf" value=" 网页翻转 "> <input type="button" id="restoration" value=" 恢复 "> </p>
+	</body>
+	<script type="text/javascript">
+	var tsf = document.getElementById("tsf");
+	var restoration = document.getElementById("restoration");
+	tsf.onclick = function(){
+		var test = document.getElementById("test");
+		test.innerHTML = "<style type='text/css'> html { filter: fliph; /* for ie */} body { transform: rotateY(180deg); /* css3 */ -moz-transform:skew(0deg, 180deg) scale(-1, 1); /* for ff */ -webkit-transform: rotateY(180deg); /* for chrome and safari */ -o-transform:skew(0deg, 180deg) scale(-1, 1); /* for opera */ overflow-x:hidden; }</style>";
+	}
+	restoration.onclick = function(){
+		var test = document.getElementById("test");
+		test.innerHTML = "";
+	}
+	</script>
+</html>

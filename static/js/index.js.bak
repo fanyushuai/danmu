@@ -1,0 +1,173 @@
+var localStorage = null;
+if(window.localStorage){
+	localStorage = window.localStorage;
+	if(!localStorage['uid']){
+		localStorage.setItem("uid",guid());
+	}	
+}
+
+//WebSocket
+var wsServer = 'ws://localhost:8001';
+var websocket= new WebSocket(wsServer);
+
+String.prototype.format = function(args) {
+	var result = this;
+	if (arguments.length < 1) {
+		return result;
+	}
+	var data = arguments;        
+	if (arguments.length == 1 && typeof (args) == "object") {
+		data = args;
+	}
+	for (var key in data) {
+		var value = data[key];
+		if (undefined != value) {
+			result = result.replace("{" + key + "}", value);
+		}
+	}
+	return result;
+}
+
+var  barrager_code =
+	'var item = {\n'+
+	"   uid:'{uid}', //发送id \n "+	
+	"   img:'{img}', //图片 \n"+
+	"   info:'{info}', //文字 \n"+
+	"   href:'{href}', //链接 \n"+
+	"   close:{close}, //显示关闭按钮 \n"+
+	"   speed:{speed}, //延迟,单位秒,默认6 \n"+
+	"   bottom:{bottom}, //距离底部高度,单位px,默认随机 \n"+
+	"   color:'{color}', //颜色,默认白色 \n"+
+	"   old_ie_color:'{old_ie_color}', //ie低版兼容色,不能与网页背景相同,默认黑色 \n"+
+	" }";
+	//\n"+
+	//"$('body').barrager(item);";
+	
+var item = null;
+var msg = null;
+
+//唯一id
+function guid() {  
+	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {  
+		var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);  
+		return v.toString(16);  
+	});  
+}  	
+
+$(function() {
+	$(".pick-a-color").pickAColor();
+
+	//每条弹幕发送间隔
+	var looper_time=3*1000;
+	//是否首次执行
+	var run_once=true;
+	
+	// do_barrager();
+	function do_barrager(){
+		if(run_once ){
+			//如果是首次执行,则设置一个定时器,并且把首次执行置为false
+			looper = setInterval(do_barrager,looper_time);                
+			run_once = false;
+		}
+	}
+	
+	websocket.onopen = function (evt) {
+		if(window.localStorage){
+			websocket.send("{\"from\":\""+localStorage["uid"]+"\",\"to\":\"\",\"msg\":\"加入\"}");
+			console.log(localStorage["uid"]+ " Connected to WebSocket server.");
+		}
+	};
+	
+	websocket.onclose = function (evt) {
+		console.log("Disconnected");
+	};
+			
+	websocket.onmessage = function (evt) {
+		//弹幕发的
+		try{
+			eval(evt.data);
+			//自己发的
+			if(item.uid == localStorage["uid"]){
+				item.info = "<span style='border:1px solid white;'>"+item.info+"</span>";
+			}
+			
+			$('body').barrager(item);
+			
+			if("抖动" == item.info){
+				$("body").addClass("shake shake-crazy");
+			}
+			if("反转" == item.info || "翻转" == item.info){
+				var reversal = document.getElementById("reversal");
+				reversal.innerHTML = "<style type='text/css'> html { filter: fliph; /* for ie */} body { transform: rotateY(180deg); /* css3 */ -moz-transform:skew(0deg, 180deg) scale(-1, 1); /* for ff */ -webkit-transform: rotateY(180deg); /* for chrome and safari */ -o-transform:skew(0deg, 180deg) scale(-1, 1); /* for opera */ overflow-x:hidden; }</style>";
+			}
+			if("恢复" == item.info){
+				$("body").removeClass("shake shake-crazy");
+				document.getElementById("reversal").innerHTML = "";
+			}
+		}catch(err){
+			//直接消息
+			console.log(evt.data);
+			msg = JSON.parse(evt.data);
+			//用户列表
+			if(msg.userList){
+				var userList = msg.userList.split(",");
+				$.each(userList,function(index,item){
+					$("#userList").append("<li>"+item+"</lli>");
+				});
+				
+				$("#userList li").on("click",function(){
+					$("#uid").val($(this).html());
+				});
+			}
+		}
+	};
+	
+	websocket.onerror = function (evt, e) {
+		console.log('Error occured: ' + evt.data);
+	};
+});
+
+//发送弹幕
+function send(){
+	var info = $('input[name=info]').val();
+	(info == '' ) ?  info='请填写弹幕文字' : info=info;
+	var href = $('input[name=href]').val();
+	var speed=parseInt($('input[name=speed]').val());
+	var bottom=parseInt($('input[name=bottom]').val());
+	var code=barrager_code;
+	if($('input:radio[name=bottomradio]:checked').val() == 0){
+		var window_height = $(window).height()-150;
+		bottom = Math.floor(Math.random()*window_height+40);
+		code = code.replace("   bottom:{bottom}, //距离底部高度,单位px,默认随机 \n",'');
+	}
+
+	var img=$('input:radio[name=img]:checked').val();
+	
+	if(img == 'none'){
+		code = code.replace("img:'{img}', //图片 \n",'');
+	}
+
+	var item = {
+		'uid':localStorage["uid"],
+		'img':'static/img/'+img,
+		'info':info,
+		'href':href,
+		'close':true,
+		'speed':speed,
+		'bottom':bottom,
+		'color':'#'+$('input[name=color').val(),
+		'old_ie_color':'#'+$('input[name=color').val()
+	};
+
+	if(!$('input[name=close]').is(':checked')){
+		item.close = false;
+	}
+
+	code = code.format(item);
+	websocket.send(code);
+	//eval(code);
+}
+
+function clear(){
+	$.fn.barrager.removeAll();
+}
